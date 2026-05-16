@@ -955,17 +955,10 @@ footer {
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group" id="grp-nombre">
-          <label for="nombre">Nombre completo *</label>
-          <input type="text" id="nombre" placeholder="Juan Pérez">
-          <span class="field-error">Ingresá tu nombre completo</span>
-        </div>
-        <div class="form-group" id="grp-dni">
-          <label for="dni">DNI *</label>
-          <input type="text" id="dni" placeholder="XX.XXX.XXX" maxlength="10">
-          <span class="field-error">Ingresá un DNI válido</span>
-        </div>
+      <div class="form-group" id="grp-nombre">
+        <label for="nombre">Nombre completo *</label>
+        <input type="text" id="nombre" placeholder="Juan Pérez">
+        <span class="field-error">Ingresá tu nombre completo</span>
       </div>
 
       <div class="form-row">
@@ -1240,8 +1233,11 @@ footer {
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
-// ── Datos del formulario guardados globalmente
+// ── EmailJS init
+emailjs.init('_tUedi1lFkpR7gK-Z');
+
 let formData = {};
 
 // ── Contador de caracteres
@@ -1249,18 +1245,17 @@ function updateCount(el) {
   document.getElementById('charCount').textContent = el.value.length + ' / 2000 caracteres';
 }
 
-// ── Validación
+// ── Validación y apertura de modal
 function validarYMostrarModal() {
   let valid = true;
 
-  function check(id, grpId, condition) {
+  function check(grpId, condition) {
     const grp = document.getElementById(grpId);
     grp.classList.remove('has-error');
     if (!condition) { grp.classList.add('has-error'); valid = false; }
   }
 
   const nombre   = document.getElementById('nombre').value.trim();
-  const dni      = document.getElementById('dni').value.trim();
   const email    = document.getElementById('email').value.trim();
   const telefono = document.getElementById('telefono').value.trim();
   const provincia= document.getElementById('provincia').value;
@@ -1270,15 +1265,14 @@ function validarYMostrarModal() {
   const consulta = document.getElementById('consulta').value.trim();
   const terminos = document.getElementById('terminos').checked;
 
-  check('nombre',   'grp-nombre',   nombre.length >= 3);
-  check('dni',      'grp-dni',      /^\d{7,9}$/.test(dni.replace(/\D/g,'')));
-  check('email',    'grp-email',    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
-  check('telefono', 'grp-telefono', telefono.length >= 8);
-  check('provincia','grp-provincia',provincia !== '');
-  check('rol',      'grp-rol',      rol !== '');
-  check('tema',     'grp-tema',     tema !== '');
-  check('urgencia', 'grp-urgencia', urgencia !== '');
-  check('consulta', 'grp-consulta', consulta.length >= 50);
+  check('grp-nombre',   nombre.length >= 3);
+  check('grp-email',    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+  check('grp-telefono', telefono.length >= 8);
+  check('grp-provincia',provincia !== '');
+  check('grp-rol',      rol !== '');
+  check('grp-tema',     tema !== '');
+  check('grp-urgencia', urgencia !== '');
+  check('grp-consulta', consulta.length >= 50);
 
   if (!terminos) {
     alert('Debés aceptar los términos y condiciones para continuar.');
@@ -1290,10 +1284,8 @@ function validarYMostrarModal() {
     return;
   }
 
-  // Guardar datos
-  formData = { nombre, dni, email, telefono, provincia, rol, tema, urgencia, consulta };
+  formData = { nombre, email, telefono, provincia, rol, tema, urgencia, consulta };
 
-  // Mostrar resumen en modal
   const temaLabels = {
     ciberdelitos: 'Estafas digitales / Ciberdelitos',
     prision:      'Prisión preventiva / Excarcelación',
@@ -1311,25 +1303,23 @@ function validarYMostrarModal() {
     media:   '🟡 Media',
     baja:    '🟢 Baja'
   };
+  const rolLabels = {
+    victima:  'Víctima',
+    imputado: 'Imputado / Investigado',
+    familiar: 'Familiar',
+    testigo:  'Testigo / Tercero',
+    otro:     'Otro'
+  };
 
   document.getElementById('sum-nombre').textContent   = nombre;
   document.getElementById('sum-email').textContent    = email;
   document.getElementById('sum-tema').textContent     = temaLabels[tema] || tema;
   document.getElementById('sum-urgencia').textContent = urgLabels[urgencia] || urgencia;
 
-  // Armar link de MercadoPago
-  // ⚠️ REEMPLAZÁ esta URL con tu link real de MercadoPago (Cobro con link de pago)
-  // Podés crear uno en: https://www.mercadopago.com.ar/cobros
-  const mpBase = 'https://mpago.la/XXXXXXXXX'; // ← TU LINK DE MP AQUÍ
-  
-  // Armamos parámetros UTM para identificar la consulta
-  const ref = encodeURIComponent(nombre + '_' + tema + '_' + Date.now().toString().slice(-6));
-  const mpLink = mpBase + '?ref=' + ref;
-
-  document.getElementById('btnPagar').href = mpLink;
+  // Link real de MercadoPago
+  document.getElementById('btnPagar').href = 'https://mpago.li/1bB3cwk';
   document.getElementById('btnPagar').onclick = function() {
-    // Enviar la consulta al mail después de que el usuario haga click en pagar
-    enviarConsultaAlMail();
+    enviarConsultaEmailJS();
   };
 
   document.getElementById('modalConfirm').classList.add('show');
@@ -1339,45 +1329,60 @@ function cerrarModal() {
   document.getElementById('modalConfirm').classList.remove('show');
 }
 
-// Cerrar modal con click fuera
 document.getElementById('modalConfirm').addEventListener('click', function(e) {
   if (e.target === this) cerrarModal();
 });
 
-// ── Envío de consulta al mail vía mailto (fallback funcional)
-// Para producción, reemplazá esto con un fetch a un backend/Formspree/EmailJS
-function enviarConsultaAlMail() {
-  const asunto = encodeURIComponent('[CONSULTA PENAL] ' + formData.tema.toUpperCase() + ' — ' + formData.nombre);
-  const cuerpo = encodeURIComponent(
-    'NUEVA CONSULTA PENAL — consultapenal.online\n' +
-    '═══════════════════════════════════════\n\n' +
-    'DATOS DEL CONSULTANTE\n' +
-    '——————————————————\n' +
-    'Nombre:     ' + formData.nombre + '\n' +
-    'DNI:        ' + formData.dni + '\n' +
-    'Email:      ' + formData.email + '\n' +
-    'Teléfono:   ' + formData.telefono + '\n' +
-    'Provincia:  ' + formData.provincia + '\n' +
-    'Rol:        ' + formData.rol + '\n\n' +
-    'DATOS DE LA CONSULTA\n' +
-    '——————————————————\n' +
-    'Área:       ' + formData.tema + '\n' +
-    'Urgencia:   ' + formData.urgencia + '\n\n' +
-    'DESCRIPCIÓN:\n' +
-    formData.consulta + '\n\n' +
-    '═══════════════════════════════════════\n' +
-    'Enviado desde: consultapenal.online'
-  );
+// ── Envío real vía EmailJS
+function enviarConsultaEmailJS() {
+  const temaLabels = {
+    ciberdelitos: 'Estafas digitales / Ciberdelitos',
+    prision:      'Prisión preventiva / Excarcelación',
+    genero:       'Violencia de género',
+    amenazas:     'Amenazas y coacciones',
+    menores:      'Imputabilidad de menores',
+    antecedentes: 'Antecedentes penales',
+    imagenes:     'Pornovenganza / Imágenes íntimas',
+    drogas:       'Narcomenudeo / Estupefacientes',
+    otro:         'Otra consulta penal'
+  };
+  const urgLabels = {
+    critica: 'CRÍTICA — vence plazo inminente',
+    alta:    'ALTA — proceso activo',
+    media:   'MEDIA — necesita orientación pronto',
+    baja:    'BAJA — entiende su situación'
+  };
+  const rolLabels = {
+    victima:  'Víctima',
+    imputado: 'Imputado / Investigado',
+    familiar: 'Familiar de imputado o víctima',
+    testigo:  'Testigo / Tercero involucrado',
+    otro:     'Otro'
+  };
 
-  // ⚠️ REEMPLAZÁ con tu email real
-  const mailTo = 'mailto:TU_EMAIL@gmail.com?subject=' + asunto + '&body=' + cuerpo;
-  
-  // Para producción: implementar con EmailJS o Formspree
-  // Ver instrucciones al final del script
-  
-  setTimeout(() => {
-    window.open(mailTo, '_blank');
-  }, 500);
+  const templateParams = {
+    to_email:    'abogado.fabiannicolasmartinez@gmail.com',
+    from_name:   formData.nombre,
+    reply_to:    formData.email,
+    nombre:      formData.nombre,
+    email:       formData.email,
+    telefono:    formData.telefono,
+    provincia:   formData.provincia,
+    rol:         rolLabels[formData.rol] || formData.rol,
+    area:        temaLabels[formData.tema] || formData.tema,
+    urgencia:    urgLabels[formData.urgencia] || formData.urgencia,
+    consulta:    formData.consulta,
+    sitio:       'defensaurgente.online',
+    fecha:       new Date().toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+  };
+
+  emailjs.send('service_tkahyrv', 'template_w2t5qgr', templateParams)
+    .then(function() {
+      console.log('Consulta enviada correctamente a EmailJS');
+    })
+    .catch(function(error) {
+      console.error('Error EmailJS:', error);
+    });
 }
 
 // ── Scroll reveal
@@ -1397,36 +1402,5 @@ document.querySelectorAll('.tema-card, .p-step, .gar-card').forEach(el => {
   revealObs.observe(el);
 });
 </script>
-
-<!--
-╔══════════════════════════════════════════════════════════════╗
-║  INSTRUCCIONES DE CONFIGURACIÓN PARA PRODUCCIÓN              ║
-╠══════════════════════════════════════════════════════════════╣
-║                                                              ║
-║  1. LINK DE MERCADOPAGO                                      ║
-║     — Entrá a mercadopago.com.ar/cobros                      ║
-║     — Creá un "link de pago" por $75.000                     ║
-║     — Copiá la URL y reemplazá 'mpago.la/XXXXXXXXX'          ║
-║                                                              ║
-║  2. EMAIL DESTINO                                            ║
-║     — Reemplazá 'TU_EMAIL@gmail.com' con tu mail real        ║
-║                                                              ║
-║  3. ENVÍO AUTOMÁTICO DE MAIL (PRODUCCIÓN)                    ║
-║     Opción A — EmailJS (gratis hasta 200/mes):               ║
-║       emailjs.com → crear cuenta → conectar tu Gmail         ║
-║       Reemplazar la función enviarConsultaAlMail()           ║
-║                                                              ║
-║     Opción B — Formspree (gratis hasta 50/mes):              ║
-║       formspree.io → crear form → obtener endpoint           ║
-║       Usar fetch POST al endpoint con los datos              ║
-║                                                              ║
-║     Opción C — Tu propio servidor con PHP/Node               ║
-║                                                              ║
-║  4. WEBHOOK DE MERCADOPAGO (RECOMENDADO)                     ║
-║     Para recibir notificación de pago confirmado:            ║
-║     Configurar webhook en MP → notifica cuando el pago       ║
-║     fue aprobado, ahí sí enviás el mail de forma segura      ║
-╚══════════════════════════════════════════════════════════════╝
--->
 </body>
 </html>
